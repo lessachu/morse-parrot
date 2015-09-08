@@ -22,78 +22,39 @@ letter_dict = { '.-' : 'A', '-...' : 'B', '-.-.' : 'C', '-..' : 'D', '.' : 'E', 
 '.--' : 'W', '-..-' : 'X', '-.--' : 'Y', '--..' : 'Z' 
 }
 
+shitty_allowed = { 'THE', 'OF', 'FOR', 'US', 'A', 'IS', 'IT' }
 
+shitty_min = 5
 morse_sentences = []
 letter_sentences = []
 found_phrases = []
 d = trie.Trie();
 
-def print_remaining(cur_words, cache_index, word_gen_cache):
+def should_filter(cur_words, shitty_count):
+    return len(cur_words) > 4 or shitty_count > 2
 
-#    print "cache called with: " + "".join(cur_words) + " at " + str(cache_index)
-#    print word_gen_cache
+def shitty_score(word):
+    if word in shitty_allowed:
+        return 0
+    if len(word) < shitty_min:
+        return 1
+    return 0
 
-    if cache_index == 0:
-        print " ".join(cur_words)
-        found_phrases.append(" ".join(cur_words))
-        return
-
-    try:
-        for word in word_gen_cache[cache_index]:
-            cur_words.append(word)
-            print_remaining(cur_words, cache_index-len(word), word_gen_cache)
-            cur_words.pop()
-    except KeyError:
-        # no valid words on this path
-        return
-
-
-def rec_parse_to_words(cur_words, remaining_letters, word_gen_cache):
-    # if there are no remaining letters
-    if len(remaining_letters) == 0:
-        print " ".join(cur_words)
-        found_phrases.append(" ".join(cur_words))
-        return
-
-    # if we've already found all the remaining words at this index, iterate through and print 
-    if len(remaining_letters) in word_gen_cache:
-#        print "using cache"
-        print_remaining(cur_words, len(remaining_letters), word_gen_cache)
-        return
-
-    # else, grab a letter, is it word?  if so
-    word = ""
-    for letter in remaining_letters:
-        word += letter
-#        print "trying: " + word + " remaining letters: " + remaining_letters
-        if d.is_word(word):
-#            print "found a word: " + word
-            cur_words.append(word)
-#            print "adding " + word + " to cache at pos " + str(len(remaining_letters))
-            if len(remaining_letters)in word_gen_cache:
-                word_gen_cache[len(remaining_letters)].append(word)
-            else:
-                word_gen_cache[len(remaining_letters)] = []
-                word_gen_cache[len(remaining_letters)].append(word)
-
-            rec_parse_to_words(cur_words, remaining_letters[len(word):], word_gen_cache)       
-            cur_words.pop()
-
-
-def parse_to_words(cur_sentence):
-    if cur_sentence not in letter_sentences:
-        letter_sentences.append(cur_sentence)
-        print "Ready to parse: " + cur_sentence
-
-        #woot, now recursively parse this into real words
-        rec_parse_to_words([], cur_sentence, {})
-
-
-def rec_generate_sentences(cur_words, cur_sentence, morse):
+def rec_generate_sentences(cur_words, cur_sentence, morse, shitty_count):
     if len(morse) == 0:
-        if len(cur_sentence) == 0 or d.is_word(cur_sentence):
- #           print "all morse letters used!  victory!"
-            print " ".join(cur_words)
+        cur_sentence_len = len(cur_sentence)
+        if cur_sentence_len == 0 or d.is_word(cur_sentence):
+            if cur_sentence_len != 0:
+                cur_words.append(cur_sentence)
+
+            if not(should_filter(cur_words, shitty_count)):
+                newphrase = " ".join(cur_words)
+                if not(newphrase in found_phrases):
+                    print " ".join(cur_words)
+                    found_phrases.append(newphrase)
+
+            if cur_sentence_len != 0:
+                cur_words.remove(cur_sentence)
         return
 
     # for each letter, have to try it until we run out of matches
@@ -101,18 +62,21 @@ def rec_generate_sentences(cur_words, cur_sentence, morse):
         try:
             letter = letter_dict[morse[0:num]]
             newword = cur_sentence + letter
- #           print "Trying " + letter + " to get " + newword  + " remaining: " + morse
- #           print cur_words
             if d.is_word(newword):
-#                print "It's a valid word"
+                shitty_count += shitty_score(newword)
+
+                if should_filter(cur_words, shitty_count):
+                    # bail this sentence is too crappy
+                    return
+
                 cur_words.append(newword)
-                rec_generate_sentences(cur_words, "", morse[num:])
- #               print "removing " + newword 
+                rec_generate_sentences(cur_words, "", morse[num:], shitty_count)
                 cur_words.remove(newword)
 
+                shitty_count -= shitty_score(newword)
+
             if d.is_prefix(newword):
- #               print "It's a valid prefix!"
-                rec_generate_sentences(cur_words, cur_sentence+letter, morse[num:])
+                rec_generate_sentences(cur_words, cur_sentence+letter, morse[num:], shitty_count)
         except KeyError:
             # just catch and suppress this error
             print morse[0:num] + " is not a valid morse letter"
@@ -129,7 +93,7 @@ def generate_sentences(morse):
 
     morse_sentences.append(morse)
     print "ready to gen: " + morse
-    rec_generate_sentences([], '', morse)
+    rec_generate_sentences([], '', morse, 0)
 
             
 def rec_generate_morse_phrase(cur_phrase, morse_phrase, morse_letter):
@@ -160,17 +124,6 @@ def load_dictionary():
     for line in f:
         d.insert(line.strip())
     print "SOWPODS loaded!"
-
-    print "IS BAT a prefix? (should be True)"
-    print d.is_prefix("BAT")
-    print "is ZULA a prefix? (should be False)"
-    print d.is_prefix("ZULA")
-    print "is BA a prefix? (should be True)"
-    print d.is_prefix("BA")
-    print "is BATMAN a word? (should be True)"
-    print d.is_word("BATMAN")
-    print "is BAT a word? (should be True)"
-    print d.is_word("BAT")
 
 def main(argv=None):
     # handle options
