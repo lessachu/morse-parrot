@@ -31,7 +31,7 @@ found_phrases = []
 d = trie.Trie();
 
 def should_filter(cur_words, shitty_count):
-    return len(cur_words) > 4 or shitty_count > 5
+    return len(cur_words) > 5 or shitty_count > 8
 
 def shitty_score(word):
     if word in shitty_allowed:
@@ -41,6 +41,7 @@ def shitty_score(word):
     return 0
 
 def rec_generate_sentences(cur_words, cur_sentence, morse, shitty_count):
+
     if len(morse) == 0:
         cur_sentence_len = len(cur_sentence)
         if cur_sentence_len == 0 or d.is_word(cur_sentence):
@@ -58,28 +59,27 @@ def rec_generate_sentences(cur_words, cur_sentence, morse, shitty_count):
         return
 
     # for each letter, have to try it until we run out of matches
-    for num in range(1,4):
+    for num in range(1,5):
         try:
-            letter = letter_dict[morse[0:num]]
-            newword = cur_sentence + letter
-            if d.is_word(newword):
-                shitty_count += shitty_score(newword)
+            if morse[0:num] in letter_dict:
+                letter = letter_dict[morse[0:num]]
 
-                if should_filter(cur_words, shitty_count):
-                    # bail this sentence is too crappy
-                    return
+                newword = cur_sentence + letter
+                if d.is_word(newword):
+                    shitty_count += shitty_score(newword)
 
-                cur_words.append(newword)
-                rec_generate_sentences(cur_words, "", morse[num:], shitty_count)
-                cur_words.remove(newword)
+                    if should_filter(cur_words, shitty_count):
+                        # bail this sentence is too crappy
+                        return
 
-                shitty_count -= shitty_score(newword)
+                    cur_words.append(newword)
+                    rec_generate_sentences(cur_words, "", morse[num:], shitty_count)
+                    cur_words.remove(newword)
 
-            if d.is_prefix(newword):
-                rec_generate_sentences(cur_words, cur_sentence+letter, morse[num:], shitty_count)
-        except KeyError:
-            # just catch and suppress this error
-            print morse[0:num] + " is not a valid morse letter"
+                    shitty_count -= shitty_score(newword)
+
+                if d.is_prefix(newword):
+                    rec_generate_sentences(cur_words, cur_sentence+letter, morse[num:], shitty_count)
         except IndexError:
             # hitting the end of the array
             # print "not enough letters to parse, we should just bail"
