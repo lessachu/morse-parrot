@@ -22,7 +22,7 @@ letter_dict = { '.-' : 'A', '-...' : 'B', '-.-.' : 'C', '-..' : 'D', '.' : 'E', 
 '.--' : 'W', '-..-' : 'X', '-.--' : 'Y', '--..' : 'Z' 
 }
 
-shitty_allowed = { 'THE', 'OF', 'FOR', 'US', 'A', 'IS', 'IT' }
+shitty_allowed = { 'THE', 'OF', 'FOR', 'US', 'A', 'IS', 'IT', 'NOT', 'AS' }
 
 shitty_min = 5
 morse_sentences = []
@@ -31,7 +31,7 @@ found_phrases = []
 d = trie.Trie();
 
 def should_filter(cur_words, shitty_count):
-    return len(cur_words) > 4 or shitty_count > 2
+    return len(cur_words) > 4 or shitty_count > 5
 
 def shitty_score(word):
     if word in shitty_allowed:
@@ -130,7 +130,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description='Find valid english phrases when a morse letter is removed')
     parser.add_argument('-p', '--phrase', help='Original phrase')
     parser.add_argument('-l', '--letter',
-                        help='Letter to remove')
+                        help='Letter to remove',default='')
 
     args = parser.parse_args()
 
@@ -145,12 +145,15 @@ def main(argv=None):
         morse_phrase += morse_dict[c]
 
     print morse_phrase
-    morse_letter = morse_dict[letter]
+    if letter != '':
+        morse_letter = morse_dict[letter]
+    else:
+        morse_letter = ''
 
     load_dictionary()
     generate_morse_phrases(morse_phrase, morse_letter)
 
-    print found_phrases
+#    print found_phrases
 
 if __name__ == "__main__":
     sys.exit(main())
